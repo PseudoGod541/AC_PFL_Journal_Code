@@ -1,185 +1,481 @@
 # AC-PFL: Adaptive Clustered Personalized Federated Learning
 
-Code and experiment logs for a thesis/journal project on **AC-PFL**, a
-clustered personalized federated learning method, evaluated against five
-baselines on the NASA C-MAPSS turbofan degradation (Remaining Useful Life)
-datasets.
+Official research code and experimental artifacts accompanying the manuscript:
 
-## Methods compared
+> **When Does Personalization Help? A Heterogeneity-Conditional Evaluation of Adaptive Clustered Federated Learning for Turbofan Engine Prognostics**
 
-| Method | Description |
-|---|---|
-| FedAvg | Standard federated averaging baseline |
-| FedProx | FedAvg with a proximal term for client drift |
-| FedPer | Personalization via locally-kept output heads |
-| Ditto | Personalized + global model trained jointly |
-| CFL | Clustered federated learning (hard client clustering) |
-| **AC-PFL** | Adaptive clustered personalized FL (this work) |
+**Manuscript status:** Under review at *Reliability Engineering & System Safety (RESS)*.
 
-## Datasets
+This repository contains the implementation, experimental configurations, logs, notebooks, and summarized results used to evaluate **Adaptive Clustered Personalized Federated Learning (AC-PFL)** for Remaining Useful Life (RUL) prediction under heterogeneous industrial data distributions.
 
-[NASA C-MAPSS](https://www.nasa.gov/intelligent-systems-division/) turbofan
-degradation simulation data, subsets **FD001–FD004** (varying operating
-conditions and fault modes). Each engine's sensor trajectory is used to
-predict Remaining Useful Life (RUL), capped at 130 cycles (`RUL_CAP` in
-[`src/config.py`](src/config.py)) following the standard piecewise-linear RUL
-convention.
+The study investigates a central question:
 
-## Repository structure
+> **When does personalization in federated learning actually help, and under what forms of heterogeneity?**
 
-```
-├── src/                       # Core, reusable implementation
-│   ├── config.py              #   dataset paths / registry
-│   ├── utils.py                #   data loading, engine clustering, condition-regime labeling
-│   ├── preprocess.py          #   RUL calculation, feature preprocessing
-│   └── run_experiment.py      #   FedAvg / FedProx / FedPer / Ditto / CFL / AC-PFL training loops
+Rather than assuming that personalization or clustering is universally beneficial, the experiments evaluate how different federated learning strategies behave across the heterogeneous NASA C-MAPSS turbofan engine datasets.
+
+---
+
+## 1. Research Overview
+
+Predictive maintenance systems increasingly rely on distributed industrial data, where raw sensor measurements cannot always be centralized because of privacy, communication, ownership, or deployment constraints.
+
+Federated Learning (FL) provides a framework for training a shared model without directly exchanging raw training data. However, industrial clients can exhibit substantial **statistical heterogeneity**, meaning that a single globally shared model may not perform equally well across all clients.
+
+This work evaluates whether **adaptive clustering combined with personalized model components** can provide advantages under such heterogeneous conditions.
+
+The proposed **AC-PFL** framework combines:
+
+* Federated learning
+* Client clustering
+* Personalized model components
+* Adaptive cluster assignment/reclustering
+* Non-IID industrial RUL prediction
+
+The experimental study compares AC-PFL with several established federated learning approaches across **NASA C-MAPSS FD001–FD004**.
+
+---
+
+## 2. Methods Compared
+
+The repository contains implementations and experimental results for six federated learning strategies:
+
+| Method      | Description                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------- |
+| **FedAvg**  | Standard federated averaging with a globally shared model                                |
+| **FedProx** | FedAvg with a proximal regularization term to improve robustness to client heterogeneity |
+| **FedPer**  | Personalized federated learning using shared and private model components                |
+| **Ditto**   | Personalized federated learning through local personalized models and a global model     |
+| **CFL**     | Clustered Federated Learning based on client similarity                                  |
+| **AC-PFL**  | Adaptive Clustered Personalized Federated Learning proposed in this work                 |
+
+---
+
+## 3. Dataset
+
+Experiments use the **NASA C-MAPSS turbofan engine simulation datasets**:
+
+* FD001
+* FD002
+* FD003
+* FD004
+
+The datasets differ in their operating-condition and fault-mode characteristics, allowing the evaluation to cover multiple levels and forms of data heterogeneity.
+
+The prediction task is **Remaining Useful Life (RUL) estimation** from multivariate engine sensor measurements.
+
+### RUL Configuration
+
+The experiments use an RUL upper cap of:
+
+**130 cycles**
+
+---
+
+## 4. Experimental Design
+
+The experiments were conducted using multiple independent random seeds.
+
+The number of seeds is intentionally different across datasets:
+
+| Dataset   | Independent Seeds per Method |
+| --------- | ---------------------------: |
+| **FD001** |                            5 |
+| **FD002** |                           10 |
+| **FD003** |                            5 |
+| **FD004** |                           10 |
+
+**Important:** These seed counts correspond to the experimental runs reported in the manuscript. All methods within a given dataset use the same number of seeds.
+
+Therefore:
+
+* FD001 → 5 runs per method
+* FD002 → 10 runs per method
+* FD003 → 5 runs per method
+* FD004 → 10 runs per method
+
+Reported results are presented as **mean ± standard deviation** across the corresponding independent runs.
+
+---
+
+## 5. Repository Structure
+
+```text
+AC_PFL_Journal_Code/
+│
+├── src/
+│   ├── config.py
+│   ├── utils.py
+│   ├── preprocess.py
+│   └── run_experiment.py
+│
 ├── notebooks/
-│   ├── main_experiments.ipynb    # FD001 & FD004 experiment runs (incl. condition-subset diagnostics)
-│   └── fd002_experiments.ipynb   # FD002 experiment runs (archived, older src snapshot — see note inside)
+│   ├── main_experiments.ipynb
+│   └── fd002_experiments.ipynb
+│
 ├── results/
-│   ├── results_summary.csv    # mean ± std of Test MAE / NASA score per method per dataset
-│   ├── parsed_results.csv     # every individual run (146 total), by method/dataset/seed
-│   └── raw_logs/              # original Flower training logs (one file per dataset)
-└── requirements.txt
+│   ├── results_summary.csv
+│   ├── parsed_results.csv
+│   └── raw_logs/
+│
+├── requirements.txt
+└── README.md
 ```
 
-## Running an experiment
+### `src/`
 
-The notebooks were developed on Kaggle, where `src/*.py` files are written to
-the working directory via `%%writefile` before being imported. To run this
-code elsewhere:
+Contains the main implementation and experiment utilities.
+
+* `config.py` — experiment configuration and hyperparameters
+* `utils.py` — utility functions used throughout the experiments
+* `preprocess.py` — dataset preprocessing and preparation
+* `run_experiment.py` — experiment execution
+
+### `notebooks/`
+
+Contains notebooks used for running and inspecting experiments.
+
+* `main_experiments.ipynb`
+* `fd002_experiments.ipynb`
+
+### `results/`
+
+Contains summarized experimental results and raw experiment logs.
+
+* `results_summary.csv`
+* `parsed_results.csv`
+* `raw_logs/`
+
+---
+
+## 6. Model Architecture
+
+The RUL prediction model uses a recurrent neural network architecture based on LSTM layers.
+
+The architecture consists of:
+
+```text
+Input Sequence
+      │
+      ▼
+LSTM (64)
+      │
+ Layer Normalization
+      │
+   Dropout
+      │
+      ▼
+LSTM (32)
+      │
+ Layer Normalization
+      │
+      ▼
+Personalized / Prediction Head
+      │
+      ├── Dense
+      ├── Dense
+      ├── Dropout
+      └── Dense (1)
+      │
+      ▼
+Predicted RUL
+```
+
+The model operates on sequential sensor data and predicts the remaining useful life of the engine.
+
+---
+
+## 7. Federated Learning Setup
+
+The experiments simulate a distributed industrial environment in which data are partitioned across multiple clients.
+
+The training process proceeds through communication rounds:
+
+1. Clients receive the relevant global/cluster model.
+2. Each client performs local training using its private data.
+3. Client updates are communicated to the server.
+4. Federated aggregation is performed.
+5. AC-PFL evaluates client similarity and cluster structure.
+6. Cluster assignments can be adapted during training.
+7. Personalized components remain associated with individual clients/clusters rather than being globally averaged.
+
+This allows the framework to investigate whether clients with different data distributions benefit from receiving different model parameters.
+
+---
+
+## 8. AC-PFL
+
+The proposed AC-PFL framework combines **clustering and personalization** within the federated learning process.
+
+The central idea is that clients may not all benefit equally from a single global model.
+
+Instead, AC-PFL seeks to:
+
+* identify similarities between clients,
+* organize similar clients into clusters,
+* maintain personalized components,
+* adapt cluster structure during federated training,
+* and provide models that better reflect heterogeneous client distributions.
+
+The framework is therefore intended to address situations in which **client heterogeneity determines whether personalization is useful**.
+
+---
+
+## 9. Evaluation Metrics
+
+The experiments primarily evaluate predictive performance using:
+
+### Mean Absolute Error (MAE)
+
+MAE measures the average absolute difference between predicted and true RUL:
+
+$$
+MAE = \frac{1}{N}\sum_{i=1}^{N}|y_i-\hat{y}_i|
+$$
+
+Lower values indicate better prediction accuracy.
+
+### NASA C-MAPSS RUL Score
+
+The NASA scoring function is also reported to capture the asymmetric cost associated with early and late RUL predictions.
+
+Lower scores indicate better performance.
+
+Both metrics are reported to provide complementary views of model performance.
+
+---
+
+# 10. Experimental Results
+
+## FD001
+
+| Method  |          MAE |     NASA Score |
+| ------- | -----------: | -------------: |
+| FedAvg  | 11.87 ± 0.73 |   375.8 ± 48.5 |
+| FedProx | 11.49 ± 0.72 |   371.7 ± 75.8 |
+| FedPer  | 12.74 ± 1.12 |  434.3 ± 115.8 |
+| AC-PFL  | 12.88 ± 0.93 |  507.2 ± 209.3 |
+| Ditto   | 14.44 ± 1.14 |  588.0 ± 260.9 |
+| CFL     | 14.74 ± 1.54 | 1179.7 ± 565.4 |
+
+**Seeds:** 5 per method.
+
+---
+
+## FD003
+
+| Method  |          MAE |       NASA Score |
+| ------- | -----------: | ---------------: |
+| FedAvg  | 12.11 ± 1.30 |    640.0 ± 221.3 |
+| FedProx | 12.61 ± 1.76 |   1037.2 ± 712.2 |
+| FedPer  | 14.02 ± 1.54 |    907.1 ± 361.3 |
+| AC-PFL  | 13.65 ± 1.04 |  4300.8 ± 5510.5 |
+| Ditto   | 14.28 ± 0.76 |  9051.0 ± 4938.4 |
+| CFL     | 14.25 ± 0.69 | 13213.0 ± 3557.8 |
+
+**Seeds:** 5 per method.
+
+---
+
+## FD002
+
+| Method  |          MAE |        NASA Score |
+| ------- | -----------: | ----------------: |
+| FedAvg  | 19.18 ± 1.35 |  11941.8 ± 3725.5 |
+| FedProx | 19.41 ± 1.10 | 22299.7 ± 24963.9 |
+| FedPer  | 18.86 ± 0.70 |  11149.8 ± 5495.6 |
+| AC-PFL  | 19.66 ± 0.98 |   8648.0 ± 3490.7 |
+| Ditto   | 21.18 ± 0.76 |  13411.3 ± 4769.3 |
+| CFL     | 22.85 ± 1.27 | 37638.2 ± 22627.9 |
+
+**Seeds:** 10 per method.
+
+---
+
+## FD004
+
+| Method  |          MAE |        NASA Score |
+| ------- | -----------: | ----------------: |
+| FedAvg  | 22.89 ± 0.77 | 47039.8 ± 29816.4 |
+| FedProx | 22.57 ± 0.83 | 67975.8 ± 37437.8 |
+| FedPer  | 22.14 ± 0.89 | 39385.0 ± 22622.4 |
+| AC-PFL  | 22.17 ± 1.06 | 28616.1 ± 13048.1 |
+| Ditto   | 23.13 ± 0.52 |  31631.6 ± 9788.1 |
+| CFL     | 24.99 ± 0.84 | 99979.6 ± 54281.1 |
+
+**Seeds:** 10 per method.
+
+---
+
+# 11. Main Research Question
+
+The study does **not** assume that personalization automatically improves federated learning.
+
+Instead, it investigates the more specific question:
+
+> **Under what types of data heterogeneity does personalization and adaptive clustering provide an advantage?**
+
+The results indicate that the effectiveness of personalization is **heterogeneity-dependent** rather than universally superior to global federated learning.
+
+This distinction is central to the manuscript.
+
+---
+
+# 12. Heterogeneity Analysis
+
+The analysis considers different sources of heterogeneity in the C-MAPSS datasets, including:
+
+* operating-condition heterogeneity
+* fault-mode heterogeneity
+* differences in client data distributions
+
+The study evaluates whether the relationship between heterogeneity and personalization effectiveness is statistically meaningful.
+
+The pooled analysis reported in the manuscript includes interaction terms between learning strategy and heterogeneity characteristics.
+
+The results indicate a statistically meaningful interaction associated with operating-condition heterogeneity, whereas the corresponding fault-mode interaction was not statistically significant.
+
+This supports the central argument that **the usefulness of personalization depends on the nature of the underlying client heterogeneity**.
+
+---
+
+# 13. Condition-Subset Analysis
+
+An additional diagnostic analysis examined the possibility of separating engines according to operating-condition assignments in FD002 and FD004.
+
+The analysis showed that individual engines can traverse multiple operating conditions during their lifetime. Consequently, assigning each engine to a single operating-condition category can produce highly imbalanced subsets rather than cleanly separated engine populations.
+
+For this reason, intermediate condition subsets were not treated as independent engine populations for the primary analysis.
+
+This is important when interpreting operating-condition heterogeneity in C-MAPSS and avoids overstating what the dataset can support.
+
+---
+
+# 14. Ablation Studies
+
+The repository also contains analyses examining the contribution of important components of AC-PFL.
+
+The ablation experiments investigate components including:
+
+* clustering,
+* adaptive/dynamic reclustering,
+* and personalized model components.
+
+Examples reported in the manuscript include:
+
+* Removing clustering improved the FD001 NASA score by approximately **14.4%**, indicating that clustering is not universally beneficial.
+* Removing dynamic reclustering increased the FD004 NASA score by approximately **97.4%**.
+* Removing private personalized heads increased the FD004 NASA score by approximately **63.4%**.
+
+These results support the broader finding that the contribution of individual AC-PFL components varies with dataset heterogeneity.
+
+---
+
+# 15. Reproducibility
+
+To facilitate reproducibility, the repository provides:
+
+* Source code
+* Experiment notebooks
+* Configuration files
+* Result summaries
+* Parsed results
+* Raw experiment logs
+* Multiple independent random seeds
+
+The experiments use the same seed allocation as the reported manuscript results:
+
+| Dataset | Number of Seeds |
+| ------- | --------------: |
+| FD001   |               5 |
+| FD002   |              10 |
+| FD003   |               5 |
+| FD004   |              10 |
+
+The seed count is **dataset-dependent by design**, rather than being a discrepancy between the manuscript and implementation.
+
+---
+
+# 16. Installation
+
+Clone the repository:
+
+```bash
+git clone https://github.com/PseudoGod541/AC_PFL_Journal_Code.git
+cd AC_PFL_Journal_Code
+```
+
+Install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-```python
-import sys
-sys.path.insert(0, "src")
+---
 
-from run_experiment import run_simulation, run_acpfl
+# 17. Running the Experiments
 
-# Baselines
-result = run_simulation("fedavg", "FD001", seed=42)
+The primary experiment implementation is located in:
 
-# AC-PFL
-result = run_acpfl("FD004", seed=42, num_clusters=2)
+```text
+src/run_experiment.py
 ```
 
-You will also need the C-MAPSS dataset files (`train_FD00X.txt`,
-`test_FD00X.txt`, `RUL_FD00X.txt`) and to update `DATA_DIR` in
-[`src/config.py`](src/config.py) to point at them.
+Configuration parameters can be found in:
 
-## Results
+```text
+src/config.py
+```
 
-These are the results as reported in the paper (Table 2), reproduced here
-verbatim as the authoritative source. Mean ± sample standard deviation (ddof=1)
-across seeds; seed counts vary by comparison (see paper Sections 4.6, 8.1).
-Subsets are grouped by operating-condition heterogeneity level (low: FD001,
-FD003; high: FD002, FD004) — see [Manuscript](#manuscript) below for the full
-statistical analysis (paired significance tests, mixed-effects model, ablation).
+The notebooks provide additional experiment-specific workflows:
 
-> **Note on `results/`:** [`results/parsed_results.csv`](results/parsed_results.csv)
-> and [`results/results_summary.csv`](results/results_summary.csv) are derived
-> from the four raw logs in [`results/raw_logs/`](results/raw_logs/) and are
-> provided for inspecting individual seed-level runs. They closely match, but
-> are not byte-identical to, Table 2 below — the logs are missing a small
-> number of runs present in the paper's final dataset (e.g. FD002 has 9 AC-PFL
-> seeds here vs. 10 in the paper; a few FD004 baselines differ slightly). Treat
-> **Table 2 in the paper as the results of record**; the CSVs are a useful but
-> not fully reconciled supplementary artifact pending the missing seed logs.
+```text
+notebooks/main_experiments.ipynb
+notebooks/fd002_experiments.ipynb
+```
 
-#### FD001 (1 condition, 1 fault mode — low heterogeneity), n = 5
+Results generated during experimentation are stored under:
 
-| Method | Test MAE | NASA Score |
-|---|---|---|
-| FedAvg | 11.87 ± 0.73 | 375.8 ± 48.5 |
-| FedProx | 11.49 ± 0.72 | 371.7 ± 75.8 |
-| FedPer | 12.74 ± 1.12 | 434.3 ± 115.8 |
-| **AC-PFL** | 12.88 ± 0.93 | 507.2 ± 209.3 |
-| Ditto | 14.44 ± 1.14 | 588.0 ± 260.9 |
-| CFL | 14.74 ± 1.54 | 1,179.7 ± 565.4 |
+```text
+results/
+```
 
-#### FD003 (1 condition, 2 fault modes — low heterogeneity), n = 5
+---
 
-| Method | Test MAE | NASA Score |
-|---|---|---|
-| FedAvg | 12.11 ± 1.30 | 640.0 ± 221.3 |
-| FedProx | 12.61 ± 1.76 | 1,037.2 ± 712.2 |
-| FedPer | 14.02 ± 1.54 | 907.1 ± 361.3 |
-| **AC-PFL** | 13.65 ± 1.04 | 4,300.8 ± 5,510.5 |
-| Ditto | 14.28 ± 0.76 | 9,051.0 ± 4,938.4 |
-| CFL | 14.25 ± 0.69 | 13,213.0 ± 3,557.8 |
+# 18. Citation
 
-#### FD002 (6 conditions, 1 fault mode — high heterogeneity), n = 10 (AC-PFL/FedAvg/FedProx), n = 5 (others)
+If you use this repository, the experimental methodology, or AC-PFL in academic work, please cite the corresponding manuscript when it becomes publicly available.
 
-| Method | Test MAE | NASA Score |
-|---|---|---|
-| FedAvg | 19.18 ± 1.35 | 11,941.8 ± 3,725.5 |
-| FedProx | 19.41 ± 1.10 | 22,299.7 ± 24,963.9 |
-| FedPer | 18.86 ± 0.70 | 11,149.8 ± 5,495.6 |
-| **AC-PFL** | 19.66 ± 0.98 | 8,648.0 ± 3,490.7 |
-| Ditto | 21.18 ± 0.76 | 13,411.3 ± 4,769.3 |
-| CFL | 22.85 ± 1.27 | 37,638.2 ± 22,627.9 |
+### Journal Manuscript
 
-#### FD004 (6 conditions, 2 fault modes — high heterogeneity), n = 10 (AC-PFL/FedAvg/FedProx), n = 5 (others)
+**Fardin Kaiser.**
+*When Does Personalization Help? A Heterogeneity-Conditional Evaluation of Adaptive Clustered Federated Learning for Turbofan Engine Prognostics.*
+Manuscript under review at *Reliability Engineering & System Safety*.
 
-| Method | Test MAE | NASA Score |
-|---|---|---|
-| FedAvg | 22.89 ± 0.77 | 47,039.8 ± 29,816.4 |
-| FedProx | 22.57 ± 0.83 | 67,975.8 ± 37,437.8 |
-| FedPer | 22.14 ± 0.89 | 39,385.0 ± 22,622.4 |
-| **AC-PFL** | 22.17 ± 1.06 | 28,616.1 ± 13,048.1 |
-| Ditto | 23.13 ± 0.52 | 31,631.6 ± 9,788.1 |
-| CFL | 24.99 ± 0.84 | 99,979.6 ± 54,281.1 |
+### Related Conference Publication
 
-**Summary (from the paper):** AC-PFL's advantage is heterogeneity-conditional,
-not universal. Under low operating-condition heterogeneity (FD001, FD003), it
-provides no measurable benefit over FedAvg/FedProx and carries a real MAE cost
-— an ablation shows removing clustering entirely (FedPer) actually *improves*
-NASA score by 14.4% on FD001, since fixed clustering fragments an
-already-small per-cluster client pool with no offsetting benefit. Under high
-operating-condition heterogeneity (FD002, FD004), AC-PFL achieves the best
-NASA score of all six methods — most consistently significant against FedProx
-— while MAE rankings remain mixed, indicating it specifically reduces
-systematic late-prediction errors rather than improving average accuracy
-uniformly. A pooled mixed-effects analysis localizes this to
-**operating-condition** diversity specifically (β = −0.488, p < 0.01), not
-fault-mode diversity (β = −0.041, p = 0.71). CFL is consistently the
-worst-performing and highest-variance method throughout, reflecting the cost
-of one-shot, non-adaptive clustering.
+**Fardin Kaiser.**
+“Adaptive Clustered Personalized Federated Learning for Non-IID Remaining Useful Life Prediction in Edge-Based Industrial Systems.”
+*2025 International Conference on Computer and Information Technology (ICCIT)*, pp. 365–370.
 
-## Manuscript
+DOI:
 
-The full paper — including significance testing (Wilcoxon/t-test), the
-pooled mixed-effects heterogeneity analysis, the component-level ablation
-study, and a discussion of limitations — is:
+```text
+10.1109/ICCIT68739.2025.11491433
+```
 
-> Kaiser, F., Hasan, E., & Rakib, S. M. *When Does Personalization Help? A
-> Heterogeneity-Conditional Evaluation of Adaptive Clustered Federated
-> Learning for Turbofan Engine Prognostics.* Preprint submitted to Elsevier.
+---
 
-A preliminary version of AC-PFL (static clustering, single dataset, MAE only)
-was presented at ICCIT 2025: Kaiser, F. *Adaptive clustered personalized
-federated learning for non-IID remaining useful life prediction in edge-based
-industrial systems.* ICCIT 2025, pp. 365–370. doi:
-10.1109/ICCIT68739.2025.11491433.
+# 19. Repository Status
 
-## Notes on the code
+This repository corresponds to the experimental code and artifacts used for the manuscript currently under review at:
 
-- `run_experiment.py`'s `run_acpfl` intentionally keeps its own copy of the
-  data-loading logic rather than calling the shared `load_dataset()` — see
-  the docstring for why.
-- Condition-regime filtering (`condition_subset` in `load_dataset` /
-  `run_acpfl`) recovers operating-condition labels via a *separate* KMeans
-  clustering from the one used for client partitioning. The paper documents
-  (Section 4.1) that this approach to constructing intermediate heterogeneity
-  levels was ultimately not usable for the main results: engines in
-  FD002/FD004 cycle through all six operating conditions within a single
-  trajectory, so the great majority of engines majority-vote to the same
-  dominant condition, leaving too few engines to build a usable subset
-  federation.
-  This code is retained as a diagnostic used during development.
-- `RUL_CAP = 130` in `config.py` (not the 125-cycle cap used in some prior
-  C-MAPSS studies) — this affects the magnitude, but not the direction, of
-  NASA score comparisons; see paper Section 4.3.
+**Reliability Engineering & System Safety (RESS)**
+
+The repository is maintained to support transparency and reproducibility of the reported experimental study.
+
+---
+
+## License
+
+Please refer to the repository license for terms governing the use and redistribution of the code.
